@@ -1,48 +1,60 @@
+
 module.exports = {
-  text (el, value) {
-    el.textContent = value || ''
+  text (value) {
+    this.el.textContent = value || ''
   },
-  show (el, value) {
-    el.style.display = value ? '' : 'none'
+  show (value) {
+    this.el.style.display = value ? '' : 'none'
   },
-  class (el, value, classname) {
-    el.classList[value ? 'add' : 'remove'](classname)
+  class (value, classname) {
+    this.el.classList[value ? 'add' : 'remove'](classname)
   },
   on: {
-    update (el, handler, event, directive) {
-      if (!directive.handlers) {
-        directive.handlers = {}
+    update (handler) {
+      var event = this.arg
+      if (!this.handlers) {
+        this.handlers = {}
       }
 
-      var handlers = directive.handlers
+      var handlers = this.handlers
 
       if (handlers[event]) {
-        el.removeEventListener(event, handlers[event])
+        this.el.removeEventListener(event, handlers[event])
       }
 
       if (handler) {
-        handler = handler.bind(el)
-        el.addEventListener(event, handler)
+        handler = handler.bind(this.el)
+        this.el.addEventListener(event, handler)
         handlers[event] = handler
       }
     },
-    unbind (el, event, directive) {
-      if (directive.handlers) {
-        el.removeEventListener(event, directive.handlers[event])
+    unbind () {
+      var event = this.arg
+      if (this.handlers) {
+        this.el.removeEventListener(event, this.handlers[event])
       }
-    },
-    customFilter (handler, selectors) {
-      return function (e) {
-        var match = selectors.every(selector => {
-          return e.target.webkitMatchesSelector(selector)
-        })
-        if (match) {
-          handler.apply(this, arguments)
-        }
-      }
-    },
-    repeat () {
-      
     }
+  },
+  for: {
+    update (collection) {
+      // watchArray(collection, this.mutate.bind(this))
+    },
+    mutate (mutation) {
+
+    }
+  }
+}
+
+var push = [].push
+    slice = [].slice
+
+function argumentArray (collection, directive) {
+  collection.push = function (element) {
+    push.call(this, arguments)
+    directive.mutate({
+      event: 'push',
+      elements: slice.call(arguments),
+      collection: collection
+    })
   }
 }

@@ -6,12 +6,13 @@
   <title>vue-sim test</title>
 </head>
 <body>
-  <div id="app" sim-on-click="changeMsg">
+  <div id="app" sim-on-click="changeMsg | delegate .button">
     <p sim-text="msg.wow | capitalize" sim-on-click="remove"></p>
     <p sim-text="msg.wow | uppercase" class="button"></p>
     <p sim-show="something">hahaha</p>
+    <p sim-text="total"></p>
     <p sim-class-red="error" sim-text="hello"></p>
-    <div sim-repeat="todos">
+    <div sim-for="todos">
       <span sim-text="text"></span>
     </div>
   </div>
@@ -23,12 +24,24 @@
       scope: {
         'msg.wow': 'wow',
         hello: 'www',
+        total: 1000,
         changeMsg () {
+          console.log('app clicked')
           app.scope['msg.wow'] = 'welcome to vue-sim'
         },
         remove () {
-          app.destory()
-        }
+          app.destroy()
+        },
+        todos: [
+          {
+            task: 'write 100 lines of code.',
+            done: true
+          },
+          {
+            task: 'write 500 lines of code',
+            done: false
+          }
+        ]
       }
     })
   </script>
