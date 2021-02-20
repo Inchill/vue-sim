@@ -21,6 +21,8 @@ function Directive (def, attr, arg, key) {
   this.arg = arg
   this.key = key
 
+  // sometimes we will use filters so that this step is necessary.
+  // if we wanna filter logo、license plate number and carrying limit in turn, this is helpful.
   var filters = attr.value.match(FILTERS_RE)
   if (filters) {
     this.filters = filters.map(filter => {
@@ -59,6 +61,8 @@ module.exports = {
     if (attr.name.indexOf(prefix) === -1) return null
 
     // parse directive name & arugment
+    // here we get the noprefix directive, for example text、show、class，etc.
+    // the name is name of the directive, and the value is what we want directive to do.
     var noprefix = attr.name.slice(prefix.length + 1),
       argIndex = noprefix.indexOf('-'),
       arg = argIndex === -1
@@ -67,6 +71,7 @@ module.exports = {
       name = arg
         ? noprefix.slice(0, argIndex)
         : noprefix,
+      // the def is an object which has hooks we defined before.
       def = Directives[name]
 
     var key = attr.value.match(KEY_RE)

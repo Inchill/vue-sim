@@ -26,6 +26,7 @@ function VueSim (opts) {
 
 VueSim.prototype.compileNode = function (node) {
   var self = this
+  // the attributes of node are the custom directives
   cloneAttributes(node.attributes).forEach(attr => {
     var directive = Directive.parse(attr, prefix)
     if (directive) {
