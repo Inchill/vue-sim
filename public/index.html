@@ -6,6 +6,15 @@
   <title>vue-sim test</title>
 </head>
 <body>
+  <div id="app">
+    {{msg}}
+  </div>
 
+  <script src="../dist/vue-sim.js"></script>
+  <script type="text/javascript">
+    var app = new VueSim('app', {
+      msg: 'hello vue-sim!'
+    })
+  </script>
 </body>
 </html>
