@@ -1,4 +1,4 @@
-var prefix = 'sim',
+var prefix = 's',
     Directives = require('./compiler/directives'),
     Directive = require('./directive'),
     // add prefix to the directives so we can identify the ele which uses directive in the following process steps.
@@ -6,15 +6,17 @@ var prefix = 'sim',
       return `[${prefix}-${d}]`
     }).join()
 
-function VueSim (opts) {
+function Sim (opts) {
   var self = this,
       root = this.el = document.getElementById(opts.id),
       els = root.querySelectorAll(selector)
 
+  // bindings is the scope object
   self.bindings = {}
   self.scope = {}
 
   // process nodes for directives
+  // and store directives into bindings，each binding key is an object which has directives[] and value
   ;[].forEach.call(els, this.compileNode.bind(this))
   this.compileNode(root)
 
@@ -24,7 +26,7 @@ function VueSim (opts) {
   }
 }
 
-VueSim.prototype.compileNode = function (node) {
+Sim.prototype.compileNode = function (node) {
   var self = this
   // the attributes of node are the custom directives
   cloneAttributes(node.attributes).forEach(attr => {
@@ -35,7 +37,7 @@ VueSim.prototype.compileNode = function (node) {
   })
 }
 
-VueSim.prototype.dump = function () {
+Sim.prototype.dump = function () {
   var data = {}
   for (var key in this._bindings) {
     data[key] = this._bindings[key].value
@@ -43,7 +45,7 @@ VueSim.prototype.dump = function () {
   return data
 }
 
-VueSim.prototype.destroy = function () {
+Sim.prototype.destroy = function () {
   for (var key in this._bindings) {
     this._bindings[key].directives.forEach(unbind)
   }
@@ -56,7 +58,7 @@ VueSim.prototype.destroy = function () {
   }
 }
 
-VueSim.prototype.bind = function (node, directive) {
+Sim.prototype.bind = function (node, directive) {
   directive.el = node
   node.removeAttribute(directive.attr.name)
 
@@ -70,7 +72,7 @@ VueSim.prototype.bind = function (node, directive) {
   }
 }
 
-VueSim.prototype.createBinding = function (key) {
+Sim.prototype.createBinding = function (key) {
   var binding = {
     value: undefined,
     directives: []
@@ -105,7 +107,7 @@ function cloneAttributes (attributes) {
 
 module.exports = {
   create (opts) {
-    return new VueSim(opts)
+    return new Sim(opts)
   },
   filter () {
 

@@ -6,20 +6,20 @@
   <title>vue-sim test</title>
 </head>
 <body>
-  <div id="app" sim-on-click="changeMsg | delegate .button">
-    <p sim-text="msg.wow | capitalize" sim-on-click="remove"></p>
-    <p sim-text="msg.wow | uppercase" class="button"></p>
-    <p sim-show="something">hahaha</p>
-    <p sim-text="total"></p>
-    <p sim-class-red="error" sim-text="hello"></p>
-    <div sim-for="todos">
-      <span sim-text="text"></span>
+  <div id="app" s-on-click="changeMsg | delegate .button">
+    <p s-text="msg.wow | capitalize" s-on-click="remove"></p>
+    <p s-text="msg.wow | uppercase" class="button"></p>
+    <p s-show="something">hahaha</p>
+    <p s-text="total"></p>
+    <p s-class-red="error" s-text="hello"></p>
+    <div s-for="todos">
+      <span s-text="text"></span>
     </div>
   </div>
 
-  <script src="../dist/vue-sim.js"></script>
+  <script src="../dist/sim.js"></script>
   <script type="text/javascript">
-    var app = VueSim.create({
+    var app = Sim.create({
       id: 'app',
       scope: {
         'msg.wow': 'wow',

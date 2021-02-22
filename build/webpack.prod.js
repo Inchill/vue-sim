@@ -8,9 +8,9 @@ module.exports = merge(common, {
     index: path.join(__dirname, '../src/index.js')
   },
   output: {
-    filename: 'vue-sim.js',
+    filename: 'sim.js',
     path: path.resolve(__dirname, '../dist'),
-    library: 'VueSim',
+    library: 'Sim',
     libraryTarget: 'window'
   },
   optimization: {
