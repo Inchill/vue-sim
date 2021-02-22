@@ -4,45 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>vue-sim test</title>
+  <script src="../dist/sim.js"></script>
 </head>
 <body>
   <div id="app" s-on-click="changeMsg | delegate .button">
     <p s-text="msg.wow | capitalize" s-on-click="remove"></p>
     <p s-text="msg.wow | uppercase" class="button"></p>
-    <p s-show="something">hahaha</p>
-    <p s-text="total"></p>
-    <p s-class-red="error" s-text="hello"></p>
-    <div s-for="todos">
-      <span s-text="text"></span>
-    </div>
+    <p s-text="total | money"></p>
   </div>
 
-  <script src="../dist/sim.js"></script>
   <script type="text/javascript">
-    var app = Sim.create({
-      id: 'app',
-      scope: {
-        'msg.wow': 'wow',
-        hello: 'www',
-        total: 1000,
-        changeMsg () {
-          console.log('app clicked')
-          app.scope['msg.wow'] = 'welcome to vue-sim'
-        },
-        remove () {
-          app.destroy()
-        },
-        todos: [
-          {
-            task: 'write 100 lines of code.',
-            done: true
-          },
-          {
-            task: 'write 500 lines of code',
-            done: false
-          }
-        ]
+    Sim.filter('money', value => {
+      return `$${value.toFixed(2)}`
+    })
+    // define a Sim
+    var Todos = Sim.extend({
+      changeMsg () {
+        this.scope['msg.wow'] = 'welcome to vue-sim'
+      },
+      remove () {
+        this.destroy()
       }
+    })
+    var todos = new Todos('#app', {
+      'msg.wow': 'wow',
+      hello: 'www',
+      total: 1000,
+      todos: [
+        {
+          task: 'write 100 lines of code.',
+          done: true
+        },
+        {
+          task: 'write 500 lines of code',
+          done: false
+        }
+      ]
     })
   </script>
 </body>

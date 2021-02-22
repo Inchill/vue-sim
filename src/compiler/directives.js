@@ -1,3 +1,5 @@
+const config = require('./config'),
+      watchArray = require('../core/observer/watchArray')
 
 module.exports = {
   text (value) {
@@ -23,7 +25,6 @@ module.exports = {
       }
 
       if (handler) {
-        handler = handler.bind(this.el)
         this.el.addEventListener(event, handler)
         handlers[event] = handler
       }
@@ -37,10 +38,11 @@ module.exports = {
   },
   for: {
     update (collection) {
-      // watchArray(collection, this.mutate.bind(this))
+      watchArray(collection, this.mutate.bind(this))
     },
     mutate (mutation) {
-
+      console.log(mutation)
+      console.log(this)
     }
   }
 }

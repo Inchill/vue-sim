@@ -1,4 +1,5 @@
-const Directives = require('./compiler/directives'),
+const config = require('./compiler/config'),
+      Directives = require('./compiler/directives'),
       Filters = require('./compiler/filters')
 
 const KEY_RE = /^[^\|]+/,
@@ -57,7 +58,8 @@ Directive.prototype.applyFilters = function (value) {
 }
 
 module.exports = {
-  parse (attr, prefix) {
+  parse (attr) {
+    const prefix = config.prefix
     if (attr.name.indexOf(prefix) === -1) return null
 
     // parse directive name & arugment
