@@ -52,6 +52,8 @@ Sim.controller = function (id, extensions) {
   controllers[id] = extensions
 }
 
+// this can access multiple sim instances as an array parameters into the bootstrap function.
+// this could be used in the such a situation which the page has several independent root instances.
 Sim.bootstrap = function (sims) {
   if (!Array.isArray(sims)) {
     sims = [sims]

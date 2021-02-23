@@ -9,7 +9,9 @@ const KEY_RE = /^[^\|]+/,
       QUOTE_RE = /'/g
 
 function Binding (directiveName, expression) {
+  // here we get the directive process function which is defined in the directives.js file
   var directive = directives[directiveName]
+
   if (typeof directive === 'function') {
     this._update = directive
   } else {
@@ -22,7 +24,7 @@ function Binding (directiveName, expression) {
     }
   }
 
-  var rawKey = expression.match(KEY_RE)[0],
+  var rawKey = expression.match(KEY_RE)[0], // for example, (msg | capitalize), the msg is the rawKey and (| capitalize) the filterExpressions.
       argMatch = rawKey.match(ARG_RE)
 
   this.key = argMatch
@@ -39,7 +41,7 @@ function Binding (directiveName, expression) {
     this.filters = filterExpressions.map(filter => {
       var tokens = filter.slice(1)
         .match(FILTER_TOKEN_RE)
-        .map(token => {
+        .map(token => { // for example, in this step the token is capitalize
           return token.replace(QUOTE_RE, '').trim()
         })
       return {
@@ -76,12 +78,13 @@ Binding.prototype.applyFilters = function (value) {
 }
 
 module.exports = {
+  // here we can get directive name and expression, this is necessary for making directive working correctly.
   parse (dirname, expression) {
     const prefix = config.prefix
     if (dirname.indexOf(prefix) === -1) return null
     dirname = dirname.slice(prefix.length + 1)
 
-    var dir = directives[dirname],
+    var dir = directives[dirname], // dir is a function that we defined in the directives before so it can correctly process the directive.
         valid = KEY_RE.test(expression)
 
     if (!dir) {
@@ -91,6 +94,7 @@ module.exports = {
       console.warn(`invalid directive expression: ${expression}`)
     }
 
+    // if the directive process function exists and the expression valid, we need to bind the directive by accessing directive name and expression.
     return dir && valid
       ? new Binding(dirname, expression)
       : null

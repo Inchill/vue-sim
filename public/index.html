@@ -10,7 +10,7 @@
   <div id="app" s-controller="TodoList">
     <p s-text="msg | capitalize" s-on="click:changeMsg | delegate .button"></p>
     <p s-text="msg | uppercase"></p>
-    <p s-on="click:remove">bye</p>
+    <p s-on="click:remove">destroy app</p>
     <p s-text="total | money"></p>
     <p class="button">change button</p>
     <p s-class="red:error" s-show="error">Error</p>
@@ -42,7 +42,7 @@
         scope.done = !scope.done
       }
     })
-    // define a Sim
+    // bootstrap a Sim, and it can access multiple parameters as an array
     var app = Sim.bootstrap({
       el: '#app',
       data: {
