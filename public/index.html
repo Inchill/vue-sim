@@ -7,39 +7,63 @@
   <script src="../dist/sim.js"></script>
 </head>
 <body>
-  <div id="app" s-on-click="changeMsg | delegate .button">
-    <p s-text="msg.wow | capitalize" s-on-click="remove"></p>
-    <p s-text="msg.wow | uppercase" class="button"></p>
+  <div id="app" s-controller="TodoList">
+    <p s-text="msg | capitalize" s-on="click:changeMsg | delegate .button"></p>
+    <p s-text="msg | uppercase"></p>
+    <p s-on="click:remove">bye</p>
     <p s-text="total | money"></p>
+    <p class="button">change button</p>
+    <p s-class="red:error" s-show="error">Error</p>
+    <ul s-show="todos">
+      <li class="todo"
+        s-controller="Todo"
+        s-for="todo:todos"
+        s-class="done:todo.done"
+        s-on="click:changeMsg, click:todo.toggle"
+        s-text="todo.text"
+      ></li>
+    </ul>
   </div>
 
   <script type="text/javascript">
     Sim.filter('money', value => {
-      return `$${value.toFixed(2)}`
+      return value ? `$${value.toFixed(2)}` : ''
     })
-    // define a Sim
-    var Todos = Sim.extend({
-      changeMsg () {
-        this.scope['msg.wow'] = 'welcome to vue-sim'
-      },
-      remove () {
-        this.destroy()
+    Sim.controller('TodoList', (scope, sim) => {
+      scope.changeMsg = function () {
+        sim.scope.msg = 'it works'
+      }
+      scope.remove = function () {
+        sim.destroy()
       }
     })
-    var todos = new Todos('#app', {
-      'msg.wow': 'wow',
-      hello: 'www',
-      total: 1000,
-      todos: [
-        {
-          task: 'write 100 lines of code.',
-          done: true
-        },
-        {
-          task: 'write 500 lines of code',
-          done: false
-        }
-      ]
+    Sim.controller('Todo', scope => {
+      scope.toggle = function () {
+        scope.done = !scope.done
+      }
+    })
+    // define a Sim
+    var app = Sim.bootstrap({
+      el: '#app',
+      data: {
+        msg: 'hello vue-sim',
+        total: 9999,
+        error: true,
+        todos: [
+          {
+            title: 'hello!',
+            done: true
+          },
+          {
+            title: 'hello!!',
+            done: false
+          },
+          {
+            title: 'hello!!!',
+            done: false
+          }
+        ]
+      }
     })
   </script>
 </body>

@@ -14,19 +14,13 @@ module.exports = {
   on: {
     update (handler) {
       var event = this.arg
-      if (!this.handlers) {
-        this.handlers = {}
-      }
-
-      var handlers = this.handlers
-
-      if (handlers[event]) {
-        this.el.removeEventListener(event, handlers[event])
+      if (this.handler) {
+        this.el.removeEventListener(event, this.handler)
       }
 
       if (handler) {
         this.el.addEventListener(event, handler)
-        handlers[event] = handler
+        this.handler = handler
       }
     },
     unbind () {
@@ -37,12 +31,45 @@ module.exports = {
     }
   },
   for: {
+    bind () {
+      this.el.removeAttribute(config.prefix + '-for')
+      this.prefixRE = new RegExp('^' + this.arg + '.')
+      var ctn = this.container = this.el.parentNode
+      this.marker = document.createComment('s-for-' + this.arg + '-marker')
+      ctn.insertBefore(this.marker, this.el)
+      ctn.removeChild(this.el)
+      this.childSims = []
+    },
     update (collection) {
+      if (this.childSims.length) {
+        this.childSims.forEach(child => {
+          child.destroy()
+        })
+        this.childSims = []
+      }
+
       watchArray(collection, this.mutate.bind(this))
+
+      collection.forEach((item, i) => {
+        this.childSims.push(this.buildItem(item, i, collection))
+      })
     },
     mutate (mutation) {
       console.log(mutation)
       console.log(this)
+    },
+    buildItem: function (data, index, collection) {
+      const Sim = require('../core/sim'),
+            node = this.el.cloneNode(true)
+
+      var spore = new Sim(node, data, {
+        eachPrefixRE: this.prefixRE,
+        parentSim: this.sim
+      })
+
+      this.container.insertBefore(node, this.marker)
+      collection[index] = spore.scope
+      return spore
     }
   }
 }

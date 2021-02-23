@@ -1,7 +1,8 @@
 const config = require('./compiler/config'),
       Sim = require('./core/sim'),
       directives = require('./compiler/directives'),
-      filters = require('./compiler/filters')
+      filters = require('./compiler/filters'),
+      controllers = require('./compiler/controllers')
 
 function buildSelector () {
   // add prefix to the directives so we can identify the ele which uses directive in the following process steps.
@@ -42,5 +43,40 @@ Sim.directive = function (name, fn) {
 Sim.filter = function (name, fn) {
   filters[name] = fn
 }
+
+Sim.controller = function (id, extensions) {
+  if (controllers[id]) {
+    console.warn(`controller ${id} was already registered and has been overwritten`)
+  }
+
+  controllers[id] = extensions
+}
+
+Sim.bootstrap = function (sims) {
+  if (!Array.isArray(sims)) {
+    sims = [sims]
+  }
+
+  var instances = []
+
+  sims.forEach(sim => {
+    var el = sim.el
+    if (typeof el === 'string') {
+      el = document.querySelector(el)
+    }
+    if (!el) {
+      console.warn(`invalid element or selector: ${sim.el}`)
+    }
+
+    instances.push(new Sim(el, sim.data, sim.options))
+  })
+
+  return instances.length > 1
+    ? instances
+    : instances[0]
+}
+
+Sim.evolve = Sim.controller
+Sim.plant = Sim.bootstrap
 
 module.exports = Sim

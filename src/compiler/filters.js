@@ -5,17 +5,25 @@ module.exports = {
   },
 
   uppercase (value) {
-    return value.toUpperCase()
+    return value.toString().toUpperCase()
   },
 
-  delegate (handler, selectors) {
+  delegate (handler, args) {
+    var selector = args[0]
     return function (e) {
-      var match = selectors.every(selector => {
-        return e.target.webkitMatchesSelector(selector)
-      })
-      if (match) {
+      if (delegateCheck(e.target, e.currentTarget, selector)) {
         handler.apply(this, arguments)
       }
     }
+  }
+}
+
+function delegateCheck (current, top, selector) {
+  if (current.webkitMatchesSelector(selector)) {
+    return true
+  } else if (current === top) {
+    return false
+  } else {
+    return delegateCheck(current.parentNode, top, selector)
   }
 }
