@@ -3,12 +3,13 @@ const config = require('./config'),
       filters = require('./filters')
 
 const KEY_RE = /^[^\|]+/,
+      LOCAL_KEY_RE = /\.[^.]+$/,
       ARG_RE = /([^:]+):(.+)$/,
       FILTERS_RE = /\|[^\|]+/g,
       FILTER_TOKEN_RE = /[^\s']+|'[^']+'/g,
       QUOTE_RE = /'/g
 
-function Binding (directiveName, expression) {
+function Directive (directiveName, expression) {
   // here we get the directive process function which is defined in the directives.js file
   var directive = directives[directiveName]
 
@@ -57,7 +58,7 @@ function Binding (directiveName, expression) {
   }
 }
 
-Binding.prototype.update = function (value) {
+Directive.prototype.update = function (value) {
   // apply filters
   if (this.filters) {
     value = this.applyFilters(value)
@@ -65,7 +66,7 @@ Binding.prototype.update = function (value) {
   this._update(value)
 }
 
-Binding.prototype.applyFilters = function (value) {
+Directive.prototype.applyFilters = function (value) {
   var filtered = value
   // apply filters to value in turn.
   this.filters.forEach(filter => {
@@ -96,7 +97,7 @@ module.exports = {
 
     // if the directive process function exists and the expression valid, we need to bind the directive by accessing directive name and expression.
     return dir && valid
-      ? new Binding(dirname, expression)
+      ? new Directive(dirname, expression)
       : null
   }
 }

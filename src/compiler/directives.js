@@ -1,9 +1,10 @@
 const config = require('./config'),
-      watchArray = require('../core/observer/watchArray')
+      watchArray = require('../core/observer/watch-array')
 
 module.exports = {
   text (value) {
-    this.el.textContent = value || ''
+    this.el.textContent = value === null
+      ? '' : value.toString()
   },
   show (value) {
     this.el.style.display = value ? '' : 'none'
@@ -11,31 +12,51 @@ module.exports = {
   class (value, classname) {
     this.el.classList[value ? 'add' : 'remove'](classname)
   },
+  checked: {
+    bind: function () {
+      var el = this.el,
+          self = this
+
+      this.change = function () {
+        self.sim.scope[self.key] = el.checked
+      }
+
+      el.addEventListener('change', this.change)
+    }
+  },
   on: {
     update (handler) {
-      var event = this.arg
+      var self = this,
+          event = this.arg
       if (this.handler) {
         this.el.removeEventListener(event, this.handler)
       }
 
       if (handler) {
-        this.el.addEventListener(event, handler)
-        this.handler = handler
+        var proxy = function (e) {
+          handler({
+            el: e.currentTarget,
+            originalEvent: e,
+            directive: self,
+            sim: self.sim
+          })
+        }
+        this.el.addEventListener(event, proxy)
+        this.handler = proxy
       }
     },
     unbind () {
       var event = this.arg
       if (this.handlers) {
-        this.el.removeEventListener(event, this.handlers[event])
+        this.el.removeEventListener(event, this.handler)
       }
     }
   },
   for: {
     bind () {
       this.el.removeAttribute(config.prefix + '-for')
-      this.prefixRE = new RegExp('^' + this.arg + '.')
       var ctn = this.container = this.el.parentNode
-      this.marker = document.createComment('s-for-' + this.arg + '-marker')
+      this.marker = document.createComment('s-for-' + this.arg)
       ctn.insertBefore(this.marker, this.el)
       ctn.removeChild(this.el)
       this.childSims = []
@@ -63,8 +84,10 @@ module.exports = {
             node = this.el.cloneNode(true)
 
       var spore = new Sim(node, data, {
-        eachPrefixRE: this.prefixRE,
-        parentSim: this.sim
+          eachPrefixRE: this.arg,
+          parentSim: this.sim,
+          eachIndex: index,
+          eachCollection: collection
       })
 
       this.container.insertBefore(node, this.marker)

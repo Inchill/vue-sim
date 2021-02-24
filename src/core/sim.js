@@ -1,9 +1,9 @@
-const config = require('../compiler/config'),
+const Emitter = require('emitter'),
+      config = require('../compiler/config'),
       controllers = require('../compiler/controllers'),
-      bindingParser = require('../compiler/binding')
+      DirectiveParser = require('../compiler/directive-parser')
 
-var map = Array.prototype.map,
-    each = Array.prototype.forEach
+var slice= Array.prototype.slice
 
 var ctrlAttr,
     forAttr
@@ -17,14 +17,24 @@ function Sim(el, data, options) {
   }
 
   // bindings is the scope object
+  el.sim = this
   this.el = el
-  this._bindings = {}
   this.scope = data
-  this._options = options || {}
+  this._bindings = {}
 
-  var key, dataCopy = {}
+  if (options) {
+    this.parentSim = options.parentSim
+    this.eachPrefixRE = new RegExp('^' + options.eachPrefixRE + '.')
+    this.eachIndex = options.eachIndex
+  }
+
+  var key
+  // keep a temporary data for all the real data
+  // so we can overwrite the passed in data object
+  // with getter/setters.
+  this._dataCopy = {}
   for (key in data) {
-    dataCopy[key] = data[key]
+    this._dataCopy[key] = data[key]
   }
 
   // if has container
@@ -41,22 +51,25 @@ function Sim(el, data, options) {
 
   // process nodes for directives
   // and store directives into bindings，each binding key is an object which has directives[] and value
+  // first, child with s-for directive
   this._compileNode(el, true)
+
+  // initialize all variables by invoking setters
+  for (key in this._dataCopy) {
+    this.scope[key] = this._dataCopy[key]
+  }
+  delete this._dataCopy
 
   // copy in methods from controller
   if (controller) {
-    controller.call(null, this.scope, this)
-  }
-
-  // initialize all variables by invoking setters
-  for (key in dataCopy) {
-    this.scope[key] = dataCopy[key]
+    controller.call(this, this.scope, this)
   }
 }
 
+Emitter(Sim.prototype)
+
 Sim.prototype._compileNode = function (node, root) {
-  var self = this,
-      ctrl = config.prefix + '-controller'
+  var self = this
 
   if (node.nodeType === 3) {
     // text node.
@@ -65,25 +78,21 @@ Sim.prototype._compileNode = function (node, root) {
     var forExp = node.getAttribute(forAttr),
         ctrlExp = node.getAttribute(ctrlAttr)
 
-    if (forExp) {
-      // for block
-      var binding = bindingParser.parse(forAttr, forExp)
+    if (forExp) { // for block
+      var binding = DirectiveParser.parse(forAttr, forExp)
       if (binding) {
         self._bind(node, binding)
+        // need to set for block so it can inherit
+        // parent scope. i.e. the childSims must have been
+        // initialized when parent setters are invoked
+        self.scope[binding.key] = self._dataCopy[binding.key]
+        delete self._dataCopy[binding.key]
       }
-    } else if (!ctrlExp || root) {
-      // normal node
-      // clone attributes because the list can change
-      var attrs = map.call(node.attributes, attr => {
-        return {
-          name: attr.name,
-          expressions: attr.value.split(',')
-        }
-      })
-      attrs.forEach(attr => {
+    } else if (ctrlExp && !root) { // normal node (non controller)
+      slice.call(node.attributes).forEach(attr => {
         var valid = false
-        attr.expressions.forEach(exp => {
-          var binding = bindingParser.parse(attr.name, exp)
+        attr.value.split(',').forEach(exp => {
+          var binding = DirectiveParser.parse(attr.name, exp)
           if (binding) {
             valid = true
             self._bind(node, binding)
@@ -94,9 +103,10 @@ Sim.prototype._compileNode = function (node, root) {
           node.removeAttribute(attr.name)
         }
       })
-
+    }
+    if (!forExp && !ctrlExp) {
       if (node.childNodes.length) {
-        each.call(node.childNodes, child => {
+        slice.call(node.childNodes).forEach((child, i) => {
           self._compileNode(child)
         })
       }
@@ -104,33 +114,35 @@ Sim.prototype._compileNode = function (node, root) {
   }
 }
 
-Sim.prototype._compileTextNode = function (node, bindingInstance) {
+Sim.prototype._compileTextNode = function (node, directive) {
   return node
 }
 
-Sim.prototype._bind = function (node, bindingInstance) {
-  bindingInstance.sim = this
-  bindingInstance.el = node
+Sim.prototype._bind = function (node, directive) {
+  directive.sim = this
+  directive.el = node
 
-  var key = bindingInstance.key,
-      epr = this._options.eachPrefixER,
-      isEachKey = epr && epr.test(key),
-      sim = this
+  var key = directive.key,
+      snr = this.eachPrefixRE,
+      isEachKey = snr && snr.test(key),
+      scopeOwner = this
 
   if (isEachKey) {
-    key = key.replace(epr, '')
-  } else if (epr) {
-    sim = this._options.sim
+    key = key.replace(snr, '')
+  } else if (snr) {
+    scopeOwner = this.parentSim
   }
 
-  var binding = sim._bindings[key] || sim._createBinding(key)
+  directive.key = key
+
+  var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key)
 
   // add directive to this binding
-  binding.instances.push(bindingInstance)
+  binding.instances.push(directive)
 
   // invoke bind hook if exists
-  if (bindingInstance.bind) {
-    bindingInstance.bind(binding.value)
+  if (directive.bind) {
+    directive.bind(binding.value)
   }
 }
 
@@ -168,7 +180,7 @@ Sim.prototype.dump = function () {
 Sim.prototype.destroy = function () {
   for (var key in this._bindings) {
     this._bindings[key].instances.forEach(unbind)
-    ;delete this._bindings[key]
+    delete this._bindings[key]
   }
   this.el.parentNode.removeChild(this.el)
 

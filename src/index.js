@@ -4,15 +4,7 @@ const config = require('./compiler/config'),
       filters = require('./compiler/filters'),
       controllers = require('./compiler/controllers')
 
-function buildSelector () {
-  // add prefix to the directives so we can identify the ele which uses directive in the following process steps.
-  config.selector = Object.keys(directives).map(directive => {
-    return `[${config.prefix}-${directive}]`
-  })
-}
-
 Sim.config = config
-buildSelector()
 
 Sim.extend = function (opts) {
   var Spore = function () {
@@ -37,7 +29,7 @@ Sim.extend = function (opts) {
 
 Sim.directive = function (name, fn) {
   directives[name] = fn
-  buildSelector()
+  // updateSelector()
 }
 
 Sim.filter = function (name, fn) {
@@ -78,7 +70,7 @@ Sim.bootstrap = function (sims) {
     : instances[0]
 }
 
-Sim.evolve = Sim.controller
-Sim.plant = Sim.bootstrap
+Sim.plant = Sim.controller
+Sim.sprout = Sim.bootstrap
 
 module.exports = Sim
