@@ -1,44 +1,37 @@
 const config = require('./compiler/config'),
       Sim = require('./core/sim'),
-      directives = require('./compiler/directives'),
-      filters = require('./compiler/filters'),
-      controllers = require('./compiler/controllers')
+      directives = require('./compiler/directives/for'),
+      filters = require('./compiler/filters')
 
-Sim.config = config
+var controllers = config.controllers,
+    datum = config.datum,
+    api = {}
 
-Sim.extend = function (opts) {
-  var Spore = function () {
-    Sim.apply(this, arguments)
-    for (let prop in this.extensions) {
-      var ext = this.extensions[prop]
-      this.scope[prop] = (typeof ext === 'function')
-        ? ext.bind(this)
-        : ext
-    }
-  }
+api.config = config
 
-  Spore.prototype = Object.create(Sim.prototype)
-  Spore.prototype.extensions = {}
-
-  for (let prop in opts) {
-    Spore.prototype.extensions[prop] = opts[prop]
-  }
-
-  return Spore
-}
-
-Sim.directive = function (name, fn) {
+api.directive = function (name, fn) {
+  if (!fn) return directives[name]
   directives[name] = fn
-  // updateSelector()
 }
 
-Sim.filter = function (name, fn) {
+api.filter = function (name, fn) {
+  if (!fn) return filters[name]
   filters[name] = fn
 }
 
-Sim.controller = function (id, extensions) {
+api.data = function (id, data) {
+  if (!data) return datum[id]
+  if (datum[id]) {
+    console.warn(`data object ${id} already exists and has been overwritten.`)
+  }
+  datum[id] = data
+}
+
+api.controller = function (id, extensions) {
+  console.log(id, extensions)
+  if (!extensions) return controllers[id]
   if (controllers[id]) {
-    console.warn(`controller ${id} was already registered and has been overwritten`)
+    console.warn(`controller ${id} already exists and has been overwritten.`)
   }
 
   controllers[id] = extensions
@@ -46,31 +39,23 @@ Sim.controller = function (id, extensions) {
 
 // this can access multiple sim instances as an array parameters into the bootstrap function.
 // this could be used in the such a situation which the page has several independent root instances.
-Sim.bootstrap = function (sims) {
-  if (!Array.isArray(sims)) {
-    sims = [sims]
+api.bootstrap = function (opts) {
+  if (opts) {
+    config.prefix = opts.prefix || config.prefix
+  }
+  var app = {},
+      n = 0,
+      el,
+      sim
+
+  while (el = document.querySelector(`[${config.prefix}-controller]`)) {
+    sim = new Sim(el)
+    if (el.id) {
+      app['$' + el.id] = sim
+    }
   }
 
-  var instances = []
-
-  sims.forEach(sim => {
-    var el = sim.el
-    if (typeof el === 'string') {
-      el = document.querySelector(el)
-    }
-    if (!el) {
-      console.warn(`invalid element or selector: ${sim.el}`)
-    }
-
-    instances.push(new Sim(el, sim.data, sim.options))
-  })
-
-  return instances.length > 1
-    ? instances
-    : instances[0]
+  return n > 1 ? app : sim
 }
 
-Sim.plant = Sim.controller
-Sim.sprout = Sim.bootstrap
-
-module.exports = Sim
+module.exports = api

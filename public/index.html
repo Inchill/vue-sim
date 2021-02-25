@@ -27,7 +27,7 @@
   </style>
 </head>
 <body>
-  <div id="app" class="all" s-controller="TodoList">
+  <div id="app" sd-class="filter" s-controller="Todos" s-data="test">
     <div>
       <input placeholder="what needs to be done?" s-on="change:addTodo"/>
     </div>
@@ -39,14 +39,18 @@
       </li>
     </ul>
     <div id="footer">
-      Remaining:<span s-text="remaining"></span><br/>
-      <a class="all" sd-on="click:filter">Show All</a> |
-      <a class="remaining" sd-on="click:filter">Show Remaining</a> |
-      <a class="completed" sd-on="click:filter">Show Completed</a>
+      Total: <span s-text="total < todos"></span> |
+      Remaining: <span s-text="remaining"></span> |
+      Completed: <span s-text="completed < remaining total"></span>
+      <br/>
+      <a class="all" sd-on="click:setFilter">Show All</a> |
+      <a class="remaining" sd-on="click:setFilter">Show Remaining</a> |
+      <a class="completed" sd-on="click:setFilter">Show Completed</a>
     </div>
   </div>
+  <script>
+    var Sim = require('Sim')
 
-  <script type="text/javascript">
     var data = {
     msg: 'hello vue-sim',
       total: 9999,
@@ -66,14 +70,28 @@
         }
       ]
     }
-    Sim.plant('TodoList', (scope, sim) => {
+
+    Sim.data('test', {todos: todos})
+
+    Sim.controller('Todos', (scope, sim) => {
       sim.on('toggle', function (todo) {
         console.log(todo)
       })
 
-      scope.remaining = scope.todos.reduce((count, todo) => {
+      // scope.todos = todos
+      scope.filter = 'all'
+      scope.remaining = todos.reduce((count, todo) => {
         return count + (todo.done ? 0 : 1)
       }, 0)
+
+      // computed properties
+      scope.total = function () {
+        return scope.todos.length
+      }
+
+      scope.completed = function () {
+        return scope.todos.length - scope.todos.remaining
+      }
 
       scope.addTodo = function (e) {
         var text = e.el.value
@@ -88,25 +106,20 @@
       }
 
       scope.removeTodo = function (e) {
-        var i = e.sim.eachIndex
-        scope.todos.slice(i, 1)
+        scope.todos.splice(e.scope.$index, 1)
+        scope.remaining -= e.scope.done ? 0 : 1
       }
 
       scope.toggleTodo = function (e) {
-        scope.remaining += e.sim.scope.done ? -1 : 1
+        scope.remaining += e.scope.done ? -1 : 1
       }
 
-      scope.filter = function (e) {
-        var filter = e.el.className
-        sim.el.className = filter
+      scope.setFilter = function (e) {
+        scope.filter = e.el.className
       }
     })
 
-    var now = Date.now()
-    var app = Sim.sprout({
-      el: '#app',
-      data: data
-    })
+    var app = Sim.bootstrap()
   </script>
 </body>
 </html>

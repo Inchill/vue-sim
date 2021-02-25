@@ -1,12 +1,12 @@
 const config = require('./config'),
-      directives = require('./directives'),
+      directives = require('./directives/for'),
       filters = require('./filters')
 
-const KEY_RE = /^[^\|]+/,
-      LOCAL_KEY_RE = /\.[^.]+$/,
+const KEY_RE = /^[^\|<]+/,
       ARG_RE = /([^:]+):(.+)$/,
-      FILTERS_RE = /\|[^\|]+/g,
+      FILTERS_RE = /\|[^\|<]+/g,
       FILTER_TOKEN_RE = /[^\s']+|'[^']+'/g,
+      DEPS_RE = /<[^<\|]+/g,
       QUOTE_RE = /'/g
 
 function Directive (directiveName, expression) {
@@ -25,25 +25,29 @@ function Directive (directiveName, expression) {
     }
   }
 
-  var rawKey = expression.match(KEY_RE)[0], // for example, (msg | capitalize), the msg is the rawKey and (| capitalize) the filterExpressions.
+  this.directiveName = directiveName
+  this.expression = expression
+
+  // for example, (msg | capitalize), the msg is the rawKey and (| capitalize) the filterExpressions.
+  var rawKey = expression.match(KEY_RE)[0],
       argMatch = rawKey.match(ARG_RE)
 
   this.key = argMatch
-              ? argMatch[2].trim()
-              : rawKey.trim()
+    ? argMatch[2].trim()
+    : rawKey.trim()
 
   this.arg = argMatch
-              ? argMatch[1].trim()
-              : null
+    ? argMatch[1].trim()
+    : null
 
-  var filterExpressions = expression.match(FILTERS_RE)
+  var filterExps = expression.match(FILTERS_RE)
 
-  if (filterExpressions) {
-    this.filters = filterExpressions.map(filter => {
+  if (filterExps) {
+    this.filters = filterExps.map(filter => {
       var tokens = filter.slice(1)
         .match(FILTER_TOKEN_RE)
         .map(token => { // for example, in this step the token is capitalize
-          return token.replace(QUOTE_RE, '').trim()
+          return token.replace(/'/g, '').trim()
         })
       return {
         name: tokens[0],
@@ -56,9 +60,19 @@ function Directive (directiveName, expression) {
   } else {
     this.filters = null
   }
+
+  var depExp = expression.match(DEPS_RE)
+  if (depExp) {
+    this.deps = depExp[0].slice(1).trim().split(/\s+/)
+  }
 }
 
 Directive.prototype.update = function (value) {
+  // computed properties
+  if (typeof value === 'function' && !this.fn) {
+    value = value()
+  }
+
   // apply filters
   if (this.filters) {
     value = this.applyFilters(value)

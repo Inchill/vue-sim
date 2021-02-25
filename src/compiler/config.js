@@ -1,3 +1,6 @@
 module.exports = {
-  prefix: 's'
+  prefix: 's',
+  controllers: {},
+  datum: {},
+  sims: {}
 }

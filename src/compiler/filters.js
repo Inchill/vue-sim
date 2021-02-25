@@ -11,8 +11,13 @@ module.exports = {
   delegate (handler, args) {
     var selector = args[0]
     return function (e) {
-      if (delegateCheck(e.target, e.currentTarget, selector)) {
-        handler.apply(this, arguments)
+      var oe = e.originalEvent,
+          target = delegateCheck(oe.target, oe.currentTarget, selector)
+
+      if (target) {
+        e.el = target
+        e.sim = target.sim
+        handler.call(this, e)
       }
     }
   }
@@ -20,7 +25,7 @@ module.exports = {
 
 function delegateCheck (current, top, selector) {
   if (current.webkitMatchesSelector(selector)) {
-    return true
+    return current
   } else if (current === top) {
     return false
   } else {
