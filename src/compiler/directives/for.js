@@ -1,5 +1,17 @@
 const config = require('../config')
 
+var augmentations = {
+  remove: function (scope) {
+    this.splice(scope.$index, 1)
+  },
+  replace: function (index, data) {
+    if (typeof index !== 'number') {
+      index = index.$index
+    }
+    this.splice(index, 1, data)
+  }
+}
+
 var mutationHandlers = {
   push: function (m) {
     m.args.forEach((data, i) => {
@@ -22,20 +34,26 @@ var mutationHandlers = {
     this.reorder()
   },
   splice: function (m) {
+    var self = this,
+      index = m.args[0],
+      removed = m.args[1],
+      added = m.args.length - 2
     m.result.forEach(scope => {
       scope.$destory()
     })
-    if (m.args.length > 2) {
+    if (added > 2) {
       m.args.slice(2).forEach((data, i) => {
-        var sim = this.buildItem(data, i)
-            index = m.args[0] - m.args[1] + (m.args.length - 1),
-            ref = this.collection[index]
-              ? this.collection[index].$sim.el
-              : this.marker
+        var sim = this.buildItem(data, index + i)
+        pos = index - removed + added + 1,
+          ref = this.collection[pos] ?
+          this.collection[pos].$sim.el :
+          this.marker
         this.container.insertBefore(sim.el, ref)
       })
     }
-    this.reorder()
+    if (removed !== added) {
+      self.reorder()
+    }
   },
   sort: function () {
     this.collection.forEach((scope, i) => {
@@ -47,9 +65,9 @@ var mutationHandlers = {
 
 mutationHandlers.reverse = mutationHandlers.sort
 
-function watchArray (arr, callback) {
+function watchArray(collection, callback) {
   Object.keys(mutationHandlers).forEach(method => {
-    arr[method] = () => {
+    collection[method] = () => {
       var result = Arrar.prototype[method].apply(this, arguments)
       callback({
         method: method,
@@ -58,18 +76,22 @@ function watchArray (arr, callback) {
       })
     }
   })
+
+  for (var method in augmentations) {
+    collection[method] = augmentations[method]
+  }
 }
 
 module.exports = {
   mutationHandlers: mutationHandlers,
-  bind () {
+  bind() {
     this.el.removeAttribute(config.prefix + '-for')
     var ctn = this.container = this.el.parentNode
     this.marker = document.createComment('s-for-' + this.arg)
     ctn.insertBefore(this.marker, this.el)
     ctn.removeChild(this.el)
   },
-  unbind (rm) {
+  unbind(rm) {
     if (this.collection && this.collection.length) {
       var fn = rm ? '_destroy' : '_unbind'
       this.collection.forEach(scope => {
@@ -77,7 +99,7 @@ module.exports = {
       })
     }
   },
-  update (collection) {
+  update(collection) {
     this.unbind(true)
 
     if (!Array.isArray(collection)) return
@@ -87,6 +109,9 @@ module.exports = {
       if (this.mutationHandlers) {
         this.mutationHandlers[mutation.method].call(this, mutation)
       }
+      if (self.binding.refreshDependents) {
+        self.binding.refreshDependents()
+      }
     })
 
     collection.forEach((data, i) => {
@@ -94,21 +119,21 @@ module.exports = {
       this.container.insertBefore(sim.el, this.marker)
     })
   },
-  reorder () {
+  reorder() {
     this.collection.forEach((scope, i) => {
       scope.$index = i
     })
   },
   buildItem: function (data, index) {
     const Sim = require('../../core/sim'),
-          node = this.el.cloneNode(true)
+      node = this.el.cloneNode(true)
 
     var spore = new Sim(node, {
-        each: true,
-        eachPrefixRE: new RegExp('^' + this.arg + '.'),
-        parentSim: this.sim,
-        index: index,
-        data: data
+      each: true,
+      eachPrefixRE: new RegExp('^' + this.arg + '.'),
+      parentSim: this.sim,
+      index: index,
+      data: data
     })
 
     this.collection[index] = spore.scope

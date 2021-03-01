@@ -43,10 +43,7 @@ api.bootstrap = function (opts) {
   if (opts) {
     config.prefix = opts.prefix || config.prefix
   }
-  var app = {},
-      n = 0,
-      el,
-      sim
+  var app = {}, n = 0, el, sim
 
   while (el = document.querySelector(`[${config.prefix}-controller]`)) {
     sim = new Sim(el)

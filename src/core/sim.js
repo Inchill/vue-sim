@@ -1,11 +1,25 @@
 const Emitter = require('events').EventEmitter,
-      config = require('../compiler/config'),
-      DirectiveParser = require('../compiler/directive-parser')
+  config = require('../compiler/config'),
+  DirectiveParser = require('../compiler/directive-parser'),
+  TextNodeParser = require('../compiler/textnode-parser')
 
-var slice= Array.prototype.slice,
-    ancestorKeyRE = /\^/g,
-    ctrlAttr = config.prefix + '-controller'
-    forAttr = config.prefix + '-for'
+var slice = Array.prototype.slice,
+  ctrlAttr = config.prefix + '-controller',
+  forAttr = config.prefix + '-for'
+
+function determinScope(key, scope) {
+  if (key.nesting) {
+    var levels = key.nesting
+    while (scope.parentSim && levels--) {
+      scope = scope.parentSim
+    }
+  } else if (key.root) {
+    while (scope.parentSim) {
+      scope = scope.parentSim
+    }
+  }
+  return scope
+}
 
 function Sim(el, options) {
   if (typeof el === 'string') {
@@ -25,10 +39,9 @@ function Sim(el, options) {
 
   // initialize the scope object
   var dataPrefix = config.prefix + '-data'
-  this.scope =
-    (options && options.data)
-    || config.datum[el.getAttribute(dataPrefix)]
-    || {}
+  var scope = this.scope =
+    (options && options.data) ||
+    config.datum[el.getAttribute(dataPrefix)] || {}
   el.removeAttribute(dataPrefix)
 
   // keep a temporary data for all the real data
@@ -41,11 +54,13 @@ function Sim(el, options) {
   }
 
   // if has container
-  this.scope.$sim = this
-  this.scope.$destroy = this._destroy.bind(this)
-  this.scope.$dump = this._dump.bind(this)
-  this.scope.$index= options.index
-  this.scope.$parent = options.parentSim && options.parentSim.scope
+  scope.$sim = this
+  scope.$destroy = this._destroy.bind(this)
+  scope.$dump = this._dump.bind(this)
+  scope.$on = this.on.bind(this)
+  scope.$emit = this.emit.bind(this)
+  scope.$index = options.index
+  scope.$parent = options.parentSim && options.parentSim.scope
 
   // process nodes for directives
   // and store directives into bindings，each binding key is an object which has directives[] and value
@@ -58,7 +73,7 @@ function Sim(el, options) {
     el.removeAttribute(ctrlAttr)
     var controller = config.controllers[ctrlID]
     if (controller) {
-      controller.call(this, this.scope, this)
+      controller.call(this, this.scope)
     } else {
       console.warn('controller ' + ctrlID + ' is not defined.')
     }
@@ -73,7 +88,7 @@ Sim.prototype._compileNode = function (node, root) {
     self._compileTextNode(node)
   } else {
     var forExp = node.getAttribute(forAttr),
-        ctrlExp = node.getAttribute(ctrlAttr)
+      ctrlExp = node.getAttribute(ctrlAttr)
 
     if (forExp) { // for block
       var binding = DirectiveParser.parse(forAttr, forExp)
@@ -87,10 +102,10 @@ Sim.prototype._compileNode = function (node, root) {
       }
     } else if (ctrlExp && !root) { // (nested controllers)
       var id = node.id,
-          sim = new Sim(node, {
-            child: true,
-            parentSim: self
-          })
+        sim = new Sim(node, {
+          child: true,
+          parentSim: self
+        })
       if (id) {
         self['$' + id] = sim
       }
@@ -124,7 +139,7 @@ Sim.prototype._compileNode = function (node, root) {
 }
 
 Sim.prototype._compileTextNode = function (node, directive) {
-  return node
+  return TextNodeParser.parse(node)
 }
 
 Sim.prototype._bind = function (node, directive) {
@@ -132,41 +147,27 @@ Sim.prototype._bind = function (node, directive) {
   directive.el = node
 
   var key = directive.key,
-      snr = this.eachPrefixRE,
-      isEachKey = snr && snr.test(key),
-      scopeOwner = this
+    epr = this.eachPrefixRE,
+    isEachKey = epr && epr.test(key),
+    scope = this
 
   if (isEachKey) {
-    key = key.replace(snr, '')
+    key = directive.key = key.replace(epr, '')
   }
 
   // handle scope nesting
-  if (snr && !isEachKey) {
-    scopeOwner = this.parentSim
-  } else {
-    var ancestors = key.match(ancestorKeyRE),
-        root = key.charAt(0) === '$'
-
-    if (ancestors) {
-      key = key.replace(ancestorKeyRE, '')
-      var levels = ancestors.length
-      while (scopeOwner.parentSim && levels--) {
-        scopeOwner = scopeOwner.parentSim
-      }
-    } else if (root) {
-      key = key.slice(1)
-      while (scopeOwner.parentSim) {
-        scopeOwner = scopeOwner.parentSim
-      }
-    }
+  if (epr && !isEachKey) {
+    scope = this.parentSim
   }
 
-  directive.key = key
-
-  var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key)
+  var ownerScope = determinScope(directive, scope),
+    binding =
+    ownerScope._bindings[key] ||
+    ownerScope._createBinding(key)
 
   // add directive to this binding
   binding.instances.push(directive)
+  directive.binding = binding
 
   // invoke bind hook if exists
   if (directive.bind) {
@@ -176,6 +177,25 @@ Sim.prototype._bind = function (node, directive) {
   // set initial value
   if (binding.value) {
     directive.update(binding.value)
+  }
+
+  // computed properties
+  if (directive.deps) {
+    directive.deps.forEach(function (dep) {
+      var depScope = determinScope(dep, scope),
+        depBinding =
+        depScope._bindings[dep.key] ||
+        depScope._createBinding(dep.key)
+      if (!depBinding.dependents) {
+        depBinding.dependents = []
+        depBinding.refreshDependents = function () {
+          depBinding.dependents.forEach(function (dept) {
+            dept.refresh()
+          })
+        }
+      }
+      depBinding.dependents.push(directive)
+    })
   }
 }
 
@@ -189,16 +209,19 @@ Sim.prototype._createBinding = function (key) {
   this._bindings[key] = binding
 
   Object.defineProperty(this.scope, key, {
-    get () {
+    get() {
       return binding.value
     },
-    set (value) {
+    set(value) {
       if (value === binding) return
       binding.changed = true
       binding.value = value
       binding.instances.forEach(instance => {
         instance.update(value)
       })
+      if (binding.refreshDependents) {
+        binding.refreshDependents()
+      }
     }
   })
 
@@ -230,18 +253,19 @@ Sim.prototype._destroy = function () {
 }
 
 Sim.prototype._dump = function () {
-  var dump = {}, val,
-      subDump = function (scope) {
-        return scope.$dump()
-      }
+  var dump = {},
+    val,
+    subDump = function (scope) {
+      return scope.$dump()
+    }
   for (var key in this.scope) {
     if (key.charAt(0) !== '$') {
       val = this._bindings[key]
       if (!val) continue
       if (Array.isArray(val)) {
-          dump[key] = val.map(subDump)
+        dump[key] = val.map(subDump)
       } else {
-          dump[key] = this._bindings[key].value
+        dump[key] = this._bindings[key].value
       }
     }
   }

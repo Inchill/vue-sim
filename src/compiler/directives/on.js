@@ -37,7 +37,7 @@ module.exports = {
         delegator[selector] = function (e) {
           var target = delegateCheck(e.target, delegator, selector)
           if (target) {
-            handler({
+            handler.call(self.sim.scope, {
               el: target,
               originalEvent: e,
               scope: target.sim.scope
@@ -49,7 +49,7 @@ module.exports = {
     } else {
       // a normal handler
       this.handler = function (e) {
-        handler({
+        handler.call(self.sim.scope, {
           el: e.currentTarget,
           originalEvent: e,
           scope: this.sim.scope
@@ -69,7 +69,7 @@ module.exports = {
       this.el.addEventListener(event, this.handler)
     }
   },
-  bind: function (handler) {
+  bind: function () {
     if (this.seed.each) {
       this.selector = '[' + this.directiveName + '*="' + this.expression + '"]'
       this.delegator = this.seed.el.parentNode
